@@ -21,20 +21,7 @@ const store = new MongoDBStore({
   collection: "sessions",
 });
 
-const Newuser = new User({
-  name: "elie",
-  email: "elie@test.com",
-  cart: {
-    items: [],
-  },
-});
 const server = app.listen(port, () => {
-  User.findOne().then((user) => {
-    if (!user) {
-      Newuser.save();
-    }
-  });
-
   console.log("Server listening on port " + port);
 });
 

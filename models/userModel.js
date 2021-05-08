@@ -143,6 +143,11 @@ const userSchema = new Schema({
     required: [true, "A user email must be provided"],
     trim: true,
   },
+  password: {
+    type: String,
+    required: [true, "A user password must be provided"],
+    trim: true,
+  },
   cart: {
     items: [
       {
