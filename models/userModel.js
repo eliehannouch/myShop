@@ -148,6 +148,7 @@ const userSchema = new Schema({
     required: [true, "A user password must be provided"],
     trim: true,
   },
+  isAdmin: false,
   cart: {
     items: [
       {
