@@ -1,20 +1,40 @@
 const bcrypt = require("bcryptjs");
-const Product = require("../models/productModel");
+const nodemailer = require("nodemailer");
 const User = require("../models/userModel");
 
+const transporter = nodemailer.createTransport({
+  service: "SendGrid",
+  auth: {
+    user: process.env.SENDGRID_USERNAME,
+    pass: process.env.SENDGRID_PASSWORD,
+  },
+});
+
 exports.getLogin = (req, res, next) => {
+  let message = req.flash("error");
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
   res.render("auth/login", {
     path: "/login",
     pageTitle: "Login",
-    isAuthenticated: false,
+    errorMessage: message,
   });
 };
 
 exports.getSignup = (req, res, next) => {
+  let message = req.flash("error");
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
   res.render("auth/signup", {
     path: "/signup",
     pageTitle: "Signup",
-    isAuthenticated: false,
+    errorMessage: message,
   });
 };
 
@@ -24,6 +44,7 @@ exports.postLogin = (req, res, next) => {
   User.findOne({ email: email })
     .then((user) => {
       if (!user) {
+        req.flash("error", "Invalid email or password.");
         return res.redirect("/login");
       }
       bcrypt
@@ -37,6 +58,7 @@ exports.postLogin = (req, res, next) => {
               res.redirect("/");
             });
           }
+          req.flash("error", "Invalid email or password.");
           res.redirect("/login");
         })
         .catch((err) => {
@@ -56,6 +78,7 @@ exports.postSignup = (req, res, next) => {
   User.findOne({ email: email })
     .then((userDoc) => {
       if (userDoc) {
+        req.flash("error", "Email already exists.");
         return res.redirect("/signup");
       }
       return bcrypt
@@ -71,9 +94,14 @@ exports.postSignup = (req, res, next) => {
         })
         .then((result) => {
           res.redirect("/login");
+          return transporter.sendMail({
+            to: email,
+            from: `myShop <${process.env.EMAIL_FROM}>`, // this email should be verifed
+            subject: "Welcome to TheShop family !!",
+            html: `<h2> Hello ${name},</h2> <p> Welcome to TheShop, this email is sent to inform you that you have been successfully registered`,
+          });
         });
     })
-
     .catch((err) => {
       console.log(err);
     });
