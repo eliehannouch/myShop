@@ -148,7 +148,12 @@ const userSchema = new Schema({
     required: [true, "A user password must be provided"],
     trim: true,
   },
-  isAdmin: false,
+  isAdmin: {
+    type: Boolean,
+    default: false,
+  },
+  resetToken: String,
+  resetTokenExpiration: Date,
   cart: {
     items: [
       {

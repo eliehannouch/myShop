@@ -75,7 +75,12 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   (res.locals.isAuthenticated = req.session.isLoggedIn),
     (res.locals.csrfToken = req.csrfToken()),
-    next();
+    (res.locals.isAdmin = req.session.isAdmin);
+  if (req.session.isLoggedIn) {
+    res.locals.currentUserId = req.user._id;
+  }
+
+  next();
 });
 
 app.use("/admin", adminRoutes);

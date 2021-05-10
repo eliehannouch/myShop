@@ -26,15 +26,22 @@
                                         <%= product.description %>
                                     </p>
                                 </div>
+                                <% if (currentUserId.toString() === product.userId.toString()) { %>
                                 <div class="card__actions">
                                     <a href="/admin/edit-product/<%= product._id %>?edit=true" class="btn">Edit</a>
                                     <form action="/admin/delete-product" method="POST">
+                                        <input type="hidden" value="<%=currentUserId %>" name="currentUserId">
                                         <input type="hidden" value="<%= product._id %>" name="productId">
                                         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                                         <button class="btn" type="submit">Delete</button>
                                     </form>
-
                                 </div>
+                                <% } else { %>
+                                 <div class="card__actions">
+                                     <span class="adminWarning"> Only the product creator can modify it.</span>
+                                   
+                                 </div>
+                                <% } %>
                             </article>
                             <% } %>
                     </div>

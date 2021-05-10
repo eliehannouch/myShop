@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const User = require("../models/userModel");
@@ -53,6 +54,7 @@ exports.postLogin = (req, res, next) => {
           if (doMatch) {
             req.session.isLoggedIn = true;
             req.session.user = user;
+            req.session.isAdmin = user.isAdmin; //TODO:
             return req.session.save((err) => {
               console.log(err);
               res.redirect("/");
@@ -74,6 +76,15 @@ exports.postSignup = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
   const confirmPassword = req.body.confirmPassword;
+
+  if (password !== confirmPassword) {
+    req.flash("error", "Passwords does not match!");
+    return res.redirect("/signup");
+  }
+  if (password.length < 8) {
+    req.flash("error", "Password should be at least of length 8");
+    return res.redirect("/signup");
+  }
 
   User.findOne({ email: email })
     .then((userDoc) => {
@@ -111,4 +122,129 @@ exports.postLogout = (req, res, next) => {
   req.session.destroy((err) => {
     res.redirect("/");
   });
+};
+
+exports.getReset = (req, res, next) => {
+  let message = req.flash("error");
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
+  res.render("auth/reset", {
+    path: "/reset",
+    pageTitle: "Reset Password",
+    errorMessage: message,
+  });
+};
+
+exports.postReset = (req, res, next) => {
+  crypto.randomBytes(32, (err, buffer) => {
+    if (err) {
+      console.log(err);
+      return res.redirect("/reset");
+    }
+    const token = buffer.toString("hex");
+    User.findOne({ email: req.body.email })
+      .then((user) => {
+        if (!user) {
+          req.flash("error", "No account was found with the provided email");
+          return res.redirect("/reset");
+        }
+
+        user.resetToken = token;
+        user.resetTokenExpiration = Date.now() + 900000;
+        return user.save();
+      })
+      .then((result) => {
+        if (result) {
+          res.redirect("/login");
+          transporter.sendMail({
+            to: req.body.email,
+            from: `myShop <${process.env.EMAIL_FROM}>`,
+            subject: "Reset Password !!",
+            html: `
+               <p> Hello Dear, upon your request  </p>
+               <p> Please click this <a href="http://127.0.0.1:3000/reset/${token}"> link </a> to set a new password </p>
+               <p style="color:#ffb0b0;"> *This Link is valid only for 15 min* </p>
+            `,
+          });
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  });
+};
+
+exports.getNewPassword = (req, res, next) => {
+  const token = req.params.token;
+  User.findOne({
+    resetToken: token,
+    resetTokenExpiration: { $gt: Date.now() },
+  })
+    .then((user) => {
+      if (!user) {
+        req.flash("error", "Invalid Token Please submit a new reset request");
+        return res.redirect("/reset");
+      }
+      let message = req.flash("error");
+      if (message.length > 0) {
+        message = message[0];
+      } else {
+        message = null;
+      }
+      res.render("auth/new-password", {
+        path: "/new-password",
+        pageTitle: "New Password",
+        errorMessage: message,
+        userId: user._id.toString(),
+        passwordToken: token,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.postNewPassword = (req, res, next) => {
+  const password = req.body.password;
+  const confirmPassword = req.body.confirmPassword;
+  const userId = req.body.userId;
+  const passwordToken = req.body.passwordToken;
+  let resetUser;
+
+  if (password !== confirmPassword) {
+    req.flash("error", "Passwords does not match!");
+    return res.redirect("back");
+  }
+  User.findOne({
+    resetToken: passwordToken,
+    resetTokenExpiration: { $gt: Date.now() },
+    _id: userId,
+  })
+    .then((user) => {
+      if (!user) {
+        req.flash(
+          "error",
+          "Invalid Token Please submit a new reset password request"
+        );
+        return res.redirect("/reset");
+      }
+
+      resetUser = user;
+      return bcrypt.hash(password, 12);
+    })
+    .then((hashedPassword) => {
+      resetUser.password = hashedPassword;
+      resetUser.resetToken = undefined;
+      resetUser.resetTokenExpiration = undefined;
+      return resetUser.save();
+    })
+    .then((result) => {
+      res.redirect("/login");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
