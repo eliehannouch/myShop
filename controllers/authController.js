@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
+const { validationResult } = require("express-validator");
+
 const User = require("../models/userModel");
 
 const transporter = nodemailer.createTransport({
@@ -22,6 +24,11 @@ exports.getLogin = (req, res, next) => {
     path: "/login",
     pageTitle: "Login",
     errorMessage: message,
+    oldInput: {
+      email: "",
+      password: "",
+    },
+    validationErrors: [],
   });
 };
 
@@ -36,17 +43,48 @@ exports.getSignup = (req, res, next) => {
     path: "/signup",
     pageTitle: "Signup",
     errorMessage: message,
+    oldInput: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+    validationErrors: [],
   });
 };
 
 exports.postLogin = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).render("auth/login", {
+      path: "/login",
+      pageTitle: "Login",
+      errorMessage: errors.array()[0].msg,
+      oldInput: {
+        email: email,
+        password: password,
+      },
+      validationErrors: errors.array(),
+    });
+  }
+
   User.findOne({ email: email })
     .then((user) => {
       if (!user) {
-        req.flash("error", "Invalid email or password.");
-        return res.redirect("/login");
+        // req.flash("error", "No account found with the provided credentials.");
+        return res.status(422).render("auth/login", {
+          path: "/login",
+          pageTitle: "Login",
+          errorMessage: "No account was found with the provided credentials.",
+          oldInput: {
+            email: email,
+            password: password,
+          },
+          validationErrors: [],
+        });
       }
       bcrypt
         .compare(password, user.password)
@@ -60,8 +98,16 @@ exports.postLogin = (req, res, next) => {
               res.redirect("/");
             });
           }
-          req.flash("error", "Invalid email or password.");
-          res.redirect("/login");
+          return res.status(422).render("auth/login", {
+            path: "/login",
+            pageTitle: "Login",
+            errorMessage: "No account was found with the provided credentials.",
+            oldInput: {
+              email: email,
+              password: password,
+            },
+            validationErrors: [],
+          });
         })
         .catch((err) => {
           console.log(err);
@@ -76,42 +122,43 @@ exports.postSignup = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
   const confirmPassword = req.body.confirmPassword;
+  const errors = validationResult(req);
 
-  if (password !== confirmPassword) {
-    req.flash("error", "Passwords does not match!");
-    return res.redirect("/signup");
-  }
-  if (password.length < 8) {
-    req.flash("error", "Password should be at least of length 8");
-    return res.redirect("/signup");
+  if (!errors.isEmpty()) {
+    console.log(errors.array());
+    return res.status(422).render("auth/signup", {
+      path: "/signup",
+      pageTitle: "Signup",
+      errorMessage: errors.array()[0].msg,
+      oldInput: {
+        name: name,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
+      },
+      validationErrors: errors.array(),
+    });
   }
 
-  User.findOne({ email: email })
-    .then((userDoc) => {
-      if (userDoc) {
-        req.flash("error", "Email already exists.");
-        return res.redirect("/signup");
-      }
-      return bcrypt
-        .hash(password, 12)
-        .then((hashedPassword) => {
-          const user = new User({
-            name: name,
-            email: email,
-            password: hashedPassword,
-            cart: { items: [] },
-          });
-          return user.save();
-        })
-        .then((result) => {
-          res.redirect("/login");
-          return transporter.sendMail({
-            to: email,
-            from: `myShop <${process.env.EMAIL_FROM}>`, // this email should be verifed
-            subject: "Welcome to TheShop family !!",
-            html: `<h2> Hello ${name},</h2> <p> Welcome to TheShop, this email is sent to inform you that you have been successfully registered`,
-          });
-        });
+  bcrypt
+    .hash(password, 12)
+    .then((hashedPassword) => {
+      const user = new User({
+        name: name,
+        email: email,
+        password: hashedPassword,
+        cart: { items: [] },
+      });
+      return user.save();
+    })
+    .then((result) => {
+      res.redirect("/login"); // TODO: uncomment the send email section when done
+      // return transporter.sendMail({
+      //   to: email,
+      //   from: `myShop <${process.env.EMAIL_FROM}>`,
+      //   subject: "Welcome to TheShop family !!",
+      //   html: `<h2> Hello ${name},</h2> <p> Welcome to TheShop, this email is sent to inform you that you have been successfully registered`,
+      // });
     })
     .catch((err) => {
       console.log(err);
