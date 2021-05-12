@@ -114,7 +114,11 @@ exports.postLogin = (req, res, next) => {
           res.redirect("/login");
         });
     })
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      const error = new Error();
+      error.httpStatusCode = 500;
+      return next(error);
+    });
 };
 
 exports.postSignup = (req, res, next) => {
@@ -161,7 +165,9 @@ exports.postSignup = (req, res, next) => {
       // });
     })
     .catch((err) => {
-      console.log(err);
+      const error = new Error();
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -206,20 +212,22 @@ exports.postReset = (req, res, next) => {
       .then((result) => {
         if (result) {
           res.redirect("/login");
-          transporter.sendMail({
-            to: req.body.email,
-            from: `myShop <${process.env.EMAIL_FROM}>`,
-            subject: "Reset Password !!",
-            html: `
-               <p> Hello Dear, upon your request  </p>
-               <p> Please click this <a href="http://127.0.0.1:3000/reset/${token}"> link </a> to set a new password </p>
-               <p style="color:#ffb0b0;"> *This Link is valid only for 15 min* </p>
-            `,
-          });
+          // transporter.sendMail({
+          //   to: req.body.email,
+          //   from: `myShop <${process.env.EMAIL_FROM}>`,
+          //   subject: "Reset Password !!",
+          //   html: `
+          //      <p> Hello Dear, upon your request  </p>
+          //      <p> Please click this <a href="http://127.0.0.1:3000/reset/${token}"> link </a> to set a new password </p>
+          //      <p style="color:#ffb0b0;"> *This Link is valid only for 15 min* </p>
+          //   `,
+          // });
         }
       })
       .catch((err) => {
-        console.log(err);
+        const error = new Error();
+        error.httpStatusCode = 500;
+        return next(error);
       });
   });
 };
@@ -250,7 +258,9 @@ exports.getNewPassword = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      const error = new Error();
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -292,6 +302,8 @@ exports.postNewPassword = (req, res, next) => {
       res.redirect("/login");
     })
     .catch((err) => {
-      console.log(err);
+      const error = new Error();
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };

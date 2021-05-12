@@ -27,3 +27,9 @@
     border: 1px solid #00695c;
     color: #00695c;
 }
+
+.invoice{ 
+  padding: 1rem;
+  text-decoration: none;
+  color: #3f3ff0;
+}

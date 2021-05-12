@@ -6,8 +6,29 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const csrf = require("csurf");
+const csrfProtection = csrf();
 const flash = require("connect-flash");
+const multer = require("multer");
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "images");
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString().replace(/:/g, "-") + file.originalname);
+  },
+});
 
+const fileFilter = (req, file, cb) => {
+  if (
+    file.mimetype === "image/png" ||
+    file.mimetype === "image/jpg" ||
+    file.mimetype === "image/jpeg"
+  ) {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+};
 const app = express();
 
 const errorController = require("./controllers/errorController");
@@ -28,8 +49,6 @@ const store = new MongoDBStore({
   collection: "sessions",
 });
 
-const csrfProtection = csrf();
-
 const server = app.listen(port, () => {
   console.log("Server listening on port " + port);
 });
@@ -47,10 +66,15 @@ app.set("view engine", "ejs");
 app.set("views", "views");
 
 app.use(express.urlencoded({ extended: false }));
+app.use(
+  multer({ storage: fileStorage, fileFilter: fileFilter }).single("image")
+);
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(path.join(__dirname, "images")));
+
 app.use(
   session({
-    secret: "IloveMyParentsHannouchFromEdBELMYDADISMEHSENHOHOH",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: store,
@@ -73,7 +97,7 @@ app.use((req, res, next) => {
       next();
     })
     .catch((err) => {
-      throw new Error(err);
+      next(new Error(err));
     });
 });
 
@@ -92,4 +116,9 @@ app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+app.use("/500", errorController.get500);
 app.use(errorController.get404);
+
+app.use((error, req, res, next) => {
+  res.redirect("/500");
+});

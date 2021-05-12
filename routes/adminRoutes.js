@@ -20,7 +20,7 @@ router.post(
       .isString()
       .isLength({ min: 3 })
       .trim(),
-    body("imageUrl", "Not a valid image url").isURL(),
+
     body("price", "Price should be a numeric value").isNumeric(),
     body(
       "description",
@@ -45,7 +45,7 @@ router.post(
       .isString()
       .isLength({ min: 3 })
       .trim(),
-    body("imageUrl", "Not a valid image url").isURL(),
+
     body("price", "Price should be a numeric value").isNumeric(),
     body(
       "description",
